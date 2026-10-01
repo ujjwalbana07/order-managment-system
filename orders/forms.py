@@ -27,9 +27,11 @@ class OrderForm(forms.Form):
         self.fields['version'] = forms.IntegerField(widget=forms.HiddenInput, initial=instance.version if instance else 1)
         self.fields['image'] = forms.FileField(required=False, label='Photo 1', help_text='JPEG, PNG or WebP. Maximum 5 MB.')
         self.fields['image2'] = forms.FileField(required=False, label='Photo 2', help_text='Optional second image. JPEG, PNG or WebP. Maximum 5 MB.')
+        self.fields['payment_status_override'].label = 'Payment status'
         self.initial.update({'account': account, 'order_date': timezone.localdate(), 'quantity': 1,
             'fx_rate': default_fx_rate(), 'gold_rate': default_gold_rate(), 'lab_rate': Decimal('0'),
-            'ship_charges': Decimal('0'), 'platform_fees_inr': Decimal('0'), 'other_wt': Decimal('0'), 'dia_ct': Decimal('0'), 'fulfilment_status': ''})
+            'ship_charges': Decimal('0'), 'platform_fees_inr': Decimal('0'), 'other_wt': Decimal('0'), 'dia_ct': Decimal('0'), 'fulfilment_status': '',
+            'payment_status_override': ''})
         if account and account.default_gold_rate is not None:
             self.initial['gold_rate'] = account.default_gold_rate
         if instance:

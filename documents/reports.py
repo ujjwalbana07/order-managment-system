@@ -9,7 +9,7 @@ ORDER_COLUMNS = [('serial_no', 'SR NO'), ('account', 'Account'), ('sales_no', 'S
     ('pure_995', 'Pure 995'), ('igi_cert_no', 'IGI'), ('gold_rate', 'Gold rate'), ('gold_amount', 'Gold amount'),
     ('lab_rate', 'Labour rate'), ('labour_amount', 'Labour amount'), ('diamond_value', 'Diamond value'),
     ('total_bill', 'Total bill'), ('tracking_no', 'Tracking'), ('ship_charges', 'Shipping'), ('platform_fees_inr', 'Platform fees'),
-    ('net_earnings', 'Net earnings'), ('challan_no', 'Challan'), ('mfg_order_no', 'Manufacturing'), ('fulfilment_status', 'Fulfilment')]
+    ('net_earnings', 'Net earnings'), ('challan_no', 'Challan'), ('mfg_order_no', 'Manufacturing'), ('fulfilment_status', 'Order status')]
 
 
 def order_rows(queryset):

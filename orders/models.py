@@ -43,6 +43,9 @@ class Order(RetainedModel):
     igi_cert_no = models.CharField(max_length=100, blank=True)
     tracking_no = models.CharField(max_length=255, blank=True)
     fulfilment_status = models.CharField(max_length=20, blank=True, default='', choices=[('', '---------'), ('Delivered', 'Delivered'), ('Returned', 'Returned'), ('Cancelled', 'Cancelled')])
+    payment_status_override = models.CharField(max_length=20, blank=True, default='', choices=[
+        ('', 'Auto from payments'), ('Unpaid', 'Unpaid'), ('Partially Paid', 'Partially Paid'),
+        ('Paid', 'Paid'), ('Refunded', 'Refunded'), ('Cancelled', 'Cancelled')])
     usd_sold = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
     fx_rate = models.DecimalField(max_digits=10, decimal_places=4, default=default_fx_rate, validators=[MinValueValidator(Decimal('0'))])
     inr_sold = money()

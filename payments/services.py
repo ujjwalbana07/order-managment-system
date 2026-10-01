@@ -19,7 +19,10 @@ def balances(order, through=None):
         payments = [p for p in payments if (p.payment_date, p.created_at, p.pk) <= key]
     allocations = [(allocation.component, allocation.amount) for payment in payments if payment.status == 'Posted'
                    for allocation in payment.allocations.all()]
-    return payment_balances({name: getattr(order, field) for name, field in COMPONENT_FIELDS.items()}, allocations)
+    result = payment_balances({name: getattr(order, field) for name, field in COMPONENT_FIELDS.items()}, allocations)
+    if getattr(order, 'payment_status_override', ''):
+        result['status'] = order.payment_status_override
+    return result
 
 
 @retry_locked

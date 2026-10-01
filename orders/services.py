@@ -13,7 +13,7 @@ from orders.images import prepare_image
 
 INPUT_FIELDS = ('account', 'sales_no', 'challan_no', 'mfg_order_no', 'order_date', 'ship_by_date',
     'buyer_username', 'item_title', 'quantity', 'igi_cert_no', 'tracking_no', 'fulfilment_status',
-    'usd_sold', 'fx_rate', 'inr_sold', 'ship_charges', 'platform_fees_inr', 'purity', 'gross_wt',
+    'payment_status_override', 'usd_sold', 'fx_rate', 'inr_sold', 'ship_charges', 'platform_fees_inr', 'purity', 'gross_wt',
     'dia_ct', 'other_wt', 'gold_rate', 'lab_rate', 'diamond_value')
 
 
