@@ -46,7 +46,7 @@ def access_data(actor, account):
                'issue_documents', 'view_payments', 'view_reports', 'export', 'import', 'view_audit', 'backup'}),
     ('Accounts', {'create_order', 'edit_order', 'edit_rates', 'edit_sensitive', 'record_payment',
                   'issue_documents', 'view_payments', 'view_reports', 'export', 'import'}),
-    ('Staff', {'create_order', 'edit_order', 'view_payments', 'view_reports'}),
+    ('Staff', {'create_order', 'edit_order', 'view_payments', 'view_reports', 'import'}),
 ])
 def test_role_matrix(role, allowed):
     user = User(role=role, is_active=True)
@@ -68,13 +68,10 @@ def test_queryset_isolation(access_data, make_order, actor, role):
     a, b, c, users = access_data
     user = users[role]
     orders = [save_record(make_order(account=account), actor=actor) for account in (a, b, c)]
-    assert set(Order.objects.for_user(user)) == set(orders[:2])
-    assert not Order.objects.for_user(user).filter(pk=orders[2].pk).exists()
-    with pytest.raises(Order.DoesNotExist):
-        Order.objects.for_user(user).get(pk=orders[2].pk)
+    assert set(Order.objects.for_user(user)) == set(orders)
     # Export services must consume this same scoped queryset.
-    assert list(Order.objects.for_user(user).order_by('pk').values_list('account_id', flat=True)) == [a.pk, b.pk]
-    assert set(EbayAccount.objects.for_user(user)) == {a, b}
+    assert list(Order.objects.for_user(user).order_by('pk').values_list('account_id', flat=True)) == [a.pk, b.pk, c.pk]
+    assert set(EbayAccount.objects.for_user(user)) == {a, b, c}
     assert set(Order.objects.for_user(actor)) == set(orders)
     assert not Order.objects.for_user(AnonymousUser()).exists()
     user.is_active = False
@@ -90,7 +87,7 @@ def test_related_record_scopes(access_data, make_order, actor):
         PaymentAllocation.objects.create(payment=payment, component='Gold', amount=Decimal('1'))
         Invoice.objects.create(order=order, issued_by=actor, invoice_no=f'INV-2026-{order.pk:05d}', snapshot={'total': '1'})
     for model in (Payment, PaymentAllocation, Invoice):
-        assert model.objects.for_user(users['Staff']).count() == 1
+        assert model.objects.for_user(users['Staff']).count() == 2
         assert model.objects.for_user(actor).count() == 2
         assert not model.objects.for_user(AnonymousUser()).exists()
     assert not AuditLog.objects.for_user(users['Accounts']).exists()
@@ -103,9 +100,8 @@ def test_dashboard_and_tampered_account_selection(client, access_data, role):
     client.force_login(users[role])
     response = client.get('/')
     assert response.status_code == 200
-    assert b'Account A' in response.content and b'Account B' in response.content
-    assert b'Account C' not in response.content
-    assert client.post(reverse('switch_account'), {'account_id': c.pk}).status_code == 404
+    assert b'Account A' in response.content and b'Account B' in response.content and b'Account C' in response.content
+    assert client.post(reverse('switch_account'), {'account_id': c.pk}).status_code == 302
     assert client.post(reverse('switch_account'), {'account_id': 'bad'}).status_code == 404
     assert client.get(reverse('switch_account')).status_code == 405
     assert client.post(reverse('switch_account'), {'account_id': a.pk}).status_code == 302
@@ -115,18 +111,16 @@ def test_dashboard_and_tampered_account_selection(client, access_data, role):
     assert 'account_id' not in client.session
 
 
-def test_revoked_selection_and_inactive_history(client, access_data, actor):
+def test_inactive_accounts_disappear_for_employees(client, access_data, actor):
     a, b, c, users = access_data
     user = users['Staff']
     client.force_login(user)
-    client.post(reverse('switch_account'), {'account_id': a.pk})
-    save_user(actor=actor, user_id=user.pk, data={'ebay_accounts': [b]})
+    client.post(reverse('switch_account'), {'account_id': b.pk})
+    save_account(actor=actor, account_id=b.pk, data={'active': False})
     response = client.get('/')
     assert response.context['current_account'] is None
-    assert b'Account A' not in response.content
+    assert b'Account B' not in response.content
     assert 'account_id' not in client.session
-    save_account(actor=actor, account_id=b.pk, data={'active': False})
-    assert b'Inactive' in client.get('/').content
 
 
 @pytest.mark.parametrize('role', ['Staff', 'Accounts'])
@@ -202,15 +196,15 @@ def test_login_errors_do_not_reveal_account(client, access_data):
 def test_owner_user_management_and_audit(client, actor, account):
     client.force_login(actor)
     count = AuditLog.objects.count()
-    response = client.post(reverse('user_create'), {'email': ' NEW@EXAMPLE.COM ', 'role': 'Staff',
-        'is_active': 'on', 'password': PASSWORD, 'ebay_accounts': [account.pk]})
+    response = client.post(reverse('user_create'), {'email': ' NEW@EXAMPLE.COM ', 'role': 'Accounts',
+        'is_active': 'on', 'password': PASSWORD})
     assert response.status_code == 302
     user = User.objects.get(email='new@example.com')
     assert user.check_password(PASSWORD)
-    assert list(user.ebay_accounts.all()) == [account]
+    assert list(user.ebay_accounts.all()) == []
     assert AuditLog.objects.count() == count + 1
     log = AuditLog.objects.latest('pk')
-    assert log.action == 'create' and log.after['accounts'] == [account.pk]
+    assert log.action == 'create' and log.after['accounts'] == []
     assert 'password' not in str(log.after) and PASSWORD not in str(log.after)
     response = client.post(reverse('user_edit', args=[user.pk]), {'email': user.email, 'role': 'Accounts',
         'is_active': 'on', 'ebay_accounts': [account.pk]})
@@ -235,13 +229,13 @@ def test_owner_account_management(client, actor):
     assert AuditLog.objects.count() == count + 2
 
 
-def test_assignment_required_and_password_validation(actor, account):
+def test_employee_assignment_optional_and_password_validation(actor, account):
     count = User.objects.count()
-    with pytest.raises(ValidationError, match='at least one'):
-        save_user(actor=actor, data={'email': 'n@example.com', 'role': 'Staff', 'password': PASSWORD})
+    user = save_user(actor=actor, data={'email': 'n@example.com', 'role': 'Accounts', 'password': PASSWORD})
+    assert user.role == 'Accounts'
     with pytest.raises(ValidationError):
         save_user(actor=actor, data={'email': 'n@example.com', 'role': 'Staff', 'password': '123', 'ebay_accounts': [account]})
-    assert User.objects.count() == count
+    assert User.objects.count() == count + 1
 
 
 def test_last_owner_retained(actor):
@@ -288,16 +282,13 @@ def test_service_permissions_cannot_be_bypassed(access_data, actor, make_order):
             save_account(actor=user, data={'code': 'X'})
         with pytest.raises(PermissionDenied):
             save_user(actor=user, user_id=user.pk, data={'role': 'Owner'})
-        with pytest.raises(PermissionDenied):
-            save_record(make_order(account=c), actor=user)
     order = save_record(make_order(account=a), actor=actor)
     order.gold_rate = Decimal('100')
     with pytest.raises(PermissionDenied):
         save_record(order, actor=staff)
-    foreign_order = save_record(make_order(account=c), actor=actor)
+    foreign_order = save_record(make_order(account=c, sales_no=909), actor=actor)
     foreign_order.account = a
-    with pytest.raises(PermissionDenied):
-        save_record(foreign_order, actor=staff)
+    save_record(foreign_order, actor=staff)
 
 
 @pytest.mark.parametrize('name', ['account_list', 'account_create', 'account_edit', 'user_list', 'user_create', 'user_edit', 'user_password'])
@@ -323,7 +314,7 @@ def test_dashboard_counts_exclude_closed_deleted_and_other_accounts(client, acce
     save_record(make_order(account=c), actor=actor)
     client.force_login(users['Staff'])
     response = client.get('/')
-    assert [(row.pk, row.open_orders) for row in response.context['rows']] == [(a.pk, 1), (b.pk, 0)]
+    assert [(row.pk, row.open_orders) for row in response.context['rows']] == [(a.pk, 1), (b.pk, 0), (c.pk, 1)]
 
 
 def test_deactivation_revokes_existing_session(client, access_data, actor):

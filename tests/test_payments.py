@@ -109,8 +109,10 @@ def test_payment_roles_and_scoped_urls(make_order, actor, account, client):
     assert client.get(f'/orders/{order.pk}/').status_code == 200
     staff.ebay_accounts.clear()
     client.force_login(staff)
-    for suffix in ('', 'photo/', 'edit/'):
-        assert client.get(f'/orders/{order.pk}/{suffix}').status_code == 404
+    for suffix in ('', 'edit/'):
+        assert client.get(f'/orders/{order.pk}/{suffix}').status_code == 200
+    assert client.get(f'/orders/{order.pk}/photo/').status_code == 404
+    assert client.get(f'/orders/{order.pk}/payments/new/').status_code == 403
 
 
 @pytest.mark.django_db(transaction=True)

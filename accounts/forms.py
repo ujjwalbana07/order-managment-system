@@ -6,7 +6,7 @@ from accounts.models import User, EbayAccount
 class EmailLoginForm(AuthenticationForm):
     username = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'autocomplete': 'username', 'autofocus': True}))
     error_messages = {'invalid_login': 'Unable to sign in. Check your email and password. After five failed attempts, wait 15 minutes before trying again.',
-                      'inactive': 'Unable to sign in. Ask an Owner for help.'}
+                      'inactive': 'Unable to sign in. Ask an Admin for help.'}
 
 
 class AccountForm(forms.ModelForm):
@@ -28,6 +28,10 @@ class UserForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['role'].choices = [(User.Role.OWNER, 'Admin'), (User.Role.ACCOUNTS, 'Employee')]
+        self.fields['role'].label = 'Login type'
+        self.fields['ebay_accounts'].label = 'Account assignment'
+        self.fields['ebay_accounts'].help_text = 'Employees can see every active account. Leave this blank unless you want to keep notes for old assignments.'
         self.fields['ebay_accounts'].queryset = EbayAccount.objects.order_by('display_name')
         if self.instance.pk:
             self.fields.pop('password')
@@ -39,12 +43,6 @@ class UserForm(forms.ModelForm):
         if User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError('A user already has this email. Use another email address.')
         return email
-
-    def clean(self):
-        data = super().clean()
-        if data.get('role') != 'Owner' and not data.get('ebay_accounts'):
-            self.add_error('ebay_accounts', 'Assign at least one eBay account.')
-        return data
 
 
 class ResetPasswordForm(forms.Form):

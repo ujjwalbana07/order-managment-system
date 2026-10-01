@@ -9,7 +9,7 @@ ROLE_ACTIONS = {
               'export', 'import', 'view_audit', 'backup'},
     'Accounts': {'create_order', 'edit_order', 'edit_rates', 'edit_sensitive', 'record_payment',
                  'issue_documents', 'view_payments', 'view_reports', 'export', 'import'},
-    'Staff': {'create_order', 'edit_order', 'view_payments', 'view_reports'},
+    'Staff': {'create_order', 'edit_order', 'view_payments', 'view_reports', 'import'},
 }
 
 
@@ -32,4 +32,6 @@ class AccountScopeMixin:
             return self.all()
         if user.role not in ROLE_ACTIONS:
             return self.none()
-        return self.filter(**{f'{self.account_path}__in': user.ebay_accounts.values('pk')})
+        if self.account_path == 'pk':
+            return self.filter(active=True)
+        return self.filter(**{self.account_path.replace('_id', '') + '__active': True})

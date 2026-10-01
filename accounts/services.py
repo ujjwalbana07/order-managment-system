@@ -31,8 +31,6 @@ def save_user(*, actor, data, user_id=None):
         if field in data:
             setattr(user, field, data[field])
     assigned = list(data.get('ebay_accounts', user.ebay_accounts.all() if user_id else []))
-    if user.role != User.Role.OWNER and not assigned:
-        raise ValidationError('Assign at least one eBay account to this user.')
     if len(owners) == 1 and owners[0].pk == user.pk and (user.role != User.Role.OWNER or not user.is_active):
         raise ValidationError('Keep at least one active Owner. Assign another Owner first.')
     if not user_id:
