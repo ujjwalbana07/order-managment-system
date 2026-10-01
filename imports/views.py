@@ -1,14 +1,18 @@
+import logging
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, render, redirect
 from accounts.access import require
 from accounts.models import EbayAccount
 from accounts.views import form_error
 from imports.models import ImportBatch
 from imports.services import create_batch, preview, commit_batch
+
+logger = logging.getLogger(__name__)
 
 
 class ImportForm(forms.Form):
@@ -45,8 +49,11 @@ def review(request, pk):
         except ValidationError as exc:
             messages.error(request, exc.messages[0])
         except (DatabaseError, IntegrityError, OSError) as exc:
-            transaction.set_rollback(False)
-            messages.error(request, 'Import could not be saved. Wait for the latest deploy to finish, then try again. If this repeats, check Render logs for: ' + exc.__class__.__name__)
+            logger.exception('Import commit failed for batch %s', pk)
+            messages.error(request, 'Import could not be saved. Wait for the latest deploy to finish, then try again. If this repeats, Render logs will show: ' + exc.__class__.__name__)
+        except Exception as exc:
+            logger.exception('Unexpected import commit failure for batch %s', pk)
+            messages.error(request, 'Import could not be saved. Render logs will show: ' + exc.__class__.__name__)
         else:
             messages.success(request, f'Import complete. {count} orders created.')
             return redirect('order_list')
@@ -54,5 +61,9 @@ def review(request, pk):
         result = preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate)
     except ValidationError as exc:
         messages.error(request, exc.messages[0])
+        return redirect('import_upload')
+    except Exception as exc:
+        logger.exception('Import preview failed for batch %s', pk)
+        messages.error(request, 'Import preview failed. Render logs will show: ' + exc.__class__.__name__)
         return redirect('import_upload')
     return render(request, 'imports/preview.html', {'batch': batch, **result})

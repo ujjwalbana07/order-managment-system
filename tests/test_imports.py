@@ -122,6 +122,24 @@ def test_import_commit_database_error_shows_message(actor, account, client):
     assert b'Import could not be saved' in response.content
 
 
+def test_import_commit_unexpected_error_shows_message(actor, account, client):
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    with patch('imports.views.commit_batch', side_effect=RuntimeError('boom')):
+        response = client.post(f'/imports/{batch.pk}/')
+    assert response.status_code == 200
+    assert b'Import could not be saved' in response.content
+
+
+def test_import_preview_unexpected_error_redirects_with_message(actor, account, client):
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    with patch('imports.views.preview', side_effect=RuntimeError('boom')):
+        response = client.get(f'/imports/{batch.pk}/')
+    assert response.status_code == 302
+    assert response['Location'] == '/imports/'
+
+
 def test_import_pages_and_other_user_batch_denied(actor, account, client):
     client.force_login(actor)
     assert client.get('/imports/').status_code == 200
