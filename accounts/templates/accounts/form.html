@@ -1,0 +1,1 @@
+{% extends 'accounts/base.html' %}{% block content %}<section class="panel"><h1>{{ title }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button type="submit">Save</button><a href="{% url cancel_url %}">Cancel</a></div></form></section>{% endblock %}

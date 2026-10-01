@@ -1,0 +1,1 @@
+{% extends 'accounts/base.html' %}{% block content %}<h1>Deleted orders</h1>{% for order in rows %}<section class="panel"><h2>{{ order.account }} · {{ order.sales_no }}</h2><p>{{ order.item_title }}</p><p>{{ order.delete_reason }}</p><a href="{% url 'order_restore' order.pk %}">Restore order</a></section>{% empty %}<p>No deleted orders.</p>{% endfor %}{% endblock %}

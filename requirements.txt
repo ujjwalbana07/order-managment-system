@@ -1,0 +1,9 @@
+Django>=5.2,<5.3
+psycopg[binary]>=3.2,<4
+openpyxl>=3.1,<4
+reportlab>=4,<5
+Pillow>=11,<13
+whitenoise>=6,<7
+gunicorn>=23,<24
+pytest>=8,<10
+pytest-django>=4.9,<5

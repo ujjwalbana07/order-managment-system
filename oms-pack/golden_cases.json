@@ -1,0 +1,198 @@
+{
+  "rules": {
+    "net_wt": "gross_wt - dia_ct/5 - other_wt",
+    "pure_995": "net_wt * purity / 0.995 (full precision, never pre-rounded)",
+    "gold_amount": "round_half_up(pure_995 * gold_rate, 2)",
+    "labour_amount": "round_half_up(net_wt * lab_rate, 2)",
+    "diamond_value": "round_half_up(input, 2)",
+    "total_bill": "gold_amount + diamond_value + labour_amount (sum of already rounded components)",
+    "net_earnings": "inr_sold - total_bill - ship_charges - platform_fees_inr (fees default 0)"
+  },
+  "calc_cases": [
+    {
+      "sales_no": 101,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "4.24",
+        "dia_ct": "7.56",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "87740.00",
+        "inr_sold": "169192.66",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "2.728",
+        "pure_995_6dp": "1.631317",
+        "gold_amount": "24469.75",
+        "labour_amount": "3410.00",
+        "diamond_value": "87740.00",
+        "total_bill": "115619.75",
+        "net_earnings": "48572.91"
+      }
+    },
+    {
+      "sales_no": 102,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "2.93",
+        "dia_ct": "4.6",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "46098.00",
+        "inr_sold": "93689.05",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "2.01",
+        "pure_995_6dp": "1.201960",
+        "gold_amount": "18029.40",
+        "labour_amount": "2512.50",
+        "diamond_value": "46098.00",
+        "total_bill": "66639.90",
+        "net_earnings": "22049.15"
+      },
+      "note": "Legacy Excel had labour hand-typed as 2513 (rounded up from 2512.50), so the old sheet shows net earnings 22048.65. The system rule (round half up to 2 decimals) gives 22049.15. The importer must show this as a flagged difference, not an error."
+    },
+    {
+      "sales_no": 103,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "3.77",
+        "dia_ct": "4.49",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "46285.00",
+        "inr_sold": "94349.71",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "2.872",
+        "pure_995_6dp": "1.717427",
+        "gold_amount": "25761.41",
+        "labour_amount": "3590.00",
+        "diamond_value": "46285.00",
+        "total_bill": "75636.41",
+        "net_earnings": "13713.30"
+      }
+    },
+    {
+      "sales_no": 105,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "1.94",
+        "dia_ct": "4.08",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "38760.00",
+        "inr_sold": "74993",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "1.124",
+        "pure_995_6dp": "0.672141",
+        "gold_amount": "10082.11",
+        "labour_amount": "1405.00",
+        "diamond_value": "38760.00",
+        "total_bill": "50247.11",
+        "net_earnings": "19745.89"
+      }
+    },
+    {
+      "sales_no": 106,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "2.2",
+        "dia_ct": "1.1",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "10450.00",
+        "inr_sold": "56085",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "1.98",
+        "pure_995_6dp": "1.184020",
+        "gold_amount": "17760.30",
+        "labour_amount": "2475.00",
+        "diamond_value": "10450.00",
+        "total_bill": "30685.30",
+        "net_earnings": "20399.70"
+      }
+    },
+    {
+      "sales_no": 107,
+      "inputs": {
+        "purity": "0.595",
+        "gross_wt": "3.86",
+        "dia_ct": "5.52",
+        "other_wt": "0",
+        "gold_rate": "15000",
+        "lab_rate": "1250",
+        "diamond_value": "63813.00",
+        "inr_sold": "122501.47",
+        "ship_charges": "5000"
+      },
+      "expected": {
+        "net_wt": "2.756",
+        "pure_995_6dp": "1.648060",
+        "gold_amount": "24720.90",
+        "labour_amount": "3445.00",
+        "diamond_value": "63813.00",
+        "total_bill": "91978.90",
+        "net_earnings": "25522.57"
+      }
+    }
+  ],
+  "payment_cases": {
+    "order": "sales_no 106 (gold 17760.30, diamond 10450.00, labour 2475.00, total 30685.30)",
+    "steps": [
+      {
+        "do": "pay 10000.00 allocated gold 10000.00",
+        "expect": {
+          "gold_out": "7760.30",
+          "diamond_out": "10450.00",
+          "labour_out": "2475.00",
+          "total_out": "20685.30",
+          "status": "Partially Paid"
+        }
+      },
+      {
+        "do": "pay 20685.30 allocated gold 7760.30, diamond 10450.00, labour 2475.00",
+        "expect": {
+          "total_out": "0.00",
+          "status": "Paid"
+        }
+      },
+      {
+        "do": "void first payment (reason required)",
+        "expect": {
+          "gold_out": "10000.00",
+          "total_out": "10000.00",
+          "status": "Partially Paid"
+        }
+      },
+      {
+        "do": "try pay 10000.00 allocated gold 9999.99",
+        "expect": "rejected: allocations must equal amount"
+      },
+      {
+        "do": "try pay 17760.31 allocated gold 17760.31 on a fresh order",
+        "expect": "rejected: exceeds gold outstanding (unless owner overpayment approval with reason)"
+      },
+      {
+        "do": "edit order so gold_amount drops below gold already received",
+        "expect": "rejected with clear message"
+      },
+      {
+        "do": "status on fresh order",
+        "expect": "Unpaid"
+      }
+    ]
+  }
+}

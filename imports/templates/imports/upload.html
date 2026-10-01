@@ -1,0 +1,1 @@
+{% extends 'accounts/base.html' %}{% block content %}<h1>Import orders</h1><p>Choose an AlkanZa workbook. Review every row before importing. Duplicate sales numbers in the selected account are skipped.</p><form class="panel" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button>Preview import</button></form>{% endblock %}

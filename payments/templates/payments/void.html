@@ -1,0 +1,1 @@
+{% extends 'accounts/base.html' %}{% block content %}<h1>Void payment {{ payment.receipt_no }}</h1><p>This payment will remain visible and will no longer count towards the bill.</p><form method="post" class="panel">{% csrf_token %}<label>Reason<textarea name="reason" required></textarea></label><button class="danger">Confirm void payment</button></form>{% endblock %}
