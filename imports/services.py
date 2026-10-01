@@ -127,7 +127,8 @@ def preview(content, *, account, actor, gold_rate=None):
             for name in ('buyer_username', 'item_title', 'igi_cert_no', 'tracking_no'):
                 data[name] = str(values.get(name) or '').strip()
             for name in ('usd_sold', 'inr_sold', 'purity', 'gross_wt', 'dia_ct', 'other_wt', 'lab_rate', 'diamond_value', 'ship_charges'):
-                data[name] = decimal_value(values.get(name), optional=name == 'usd_sold')
+                value = decimal_value(values.get(name), optional=name in {'usd_sold', 'other_wt'})
+                data[name] = value if value is not None else Decimal('0')
             if data['purity'] > 1:
                 data['purity'] /= Decimal('100')
             quantity = decimal_value(values['quantity'])

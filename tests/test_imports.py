@@ -64,6 +64,13 @@ def test_real_rows_preview_differences_images_and_idempotency(actor, account, se
         assert order.image and order.thumbnail
 
 
+def test_blank_other_weight_imports_as_zero(actor, account):
+    content = workbook()
+    result = preview(content, account=account, actor=actor)
+    assert not result['has_errors']
+    assert all(row['data']['other_wt'] == Decimal('0') for row in result['rows'])
+
+
 def test_import_ignores_soft_deleted_sales_numbers(actor, account):
     content = workbook()
     batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
