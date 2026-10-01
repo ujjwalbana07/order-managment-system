@@ -14,7 +14,7 @@ from django.utils import timezone
 from accounts.access import require
 from accounts.models import EbayAccount
 from audit.models import AuditLog
-from core.models import default_fx_rate
+from core.models import default_fx_rate, default_gold_rate
 from core.transactions import retry_locked
 from imports.models import ImportBatch
 from orders.images import prepare_image
@@ -76,7 +76,7 @@ def open_workbook(content):
         raise ValidationError('Choose a valid .xlsx workbook.') from exc
 
 
-def preview(content, *, account, actor, gold_rate):
+def preview(content, *, account, actor, gold_rate=None):
     require(actor, 'import')
     if not EbayAccount.objects.for_user(actor).filter(pk=account.pk, active=True).exists():
         raise ValidationError('Select an active account you have access to.')
@@ -121,7 +121,8 @@ def preview(content, *, account, actor, gold_rate):
                 continue
             seen.add(row['sales_no'])
             data = {'account': account, 'sales_no': row['sales_no'], 'order_date': date_value(values['order_date']),
-                'ship_by_date': date_value(values.get('ship_by_date'), optional=True), 'gold_rate': gold_rate,
+                'ship_by_date': date_value(values.get('ship_by_date'), optional=True),
+                'gold_rate': decimal_value(values.get('gold_rate'), optional=True) or gold_rate or default_gold_rate(),
                 'fx_rate': default_fx_rate(), 'platform_fees_inr': Decimal('0')}
             for name in ('buyer_username', 'item_title', 'igi_cert_no', 'tracking_no'):
                 data[name] = str(values.get(name) or '').strip()
@@ -157,10 +158,10 @@ def preview(content, *, account, actor, gold_rate):
 
 
 @transaction.atomic
-def create_batch(*, actor, account, upload, gold_rate):
+def create_batch(*, actor, account, upload, gold_rate=None):
     content = upload.read(10 * 1024 * 1024 + 1)
     preview(content, account=account, actor=actor, gold_rate=gold_rate)
-    batch = ImportBatch(actor=actor, account=account, filename=Path(upload.name).name, source=content, gold_rate=gold_rate)
+    batch = ImportBatch(actor=actor, account=account, filename=Path(upload.name).name, source=content, gold_rate=gold_rate or default_gold_rate())
     batch.save()
     AuditLog.objects.create(actor=actor, action='import_preview', object_type='imports.ImportBatch', object_id=str(batch.pk),
         account=account, after={'filename': batch.filename})

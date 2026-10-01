@@ -44,20 +44,21 @@ def workbook(bad=False, photos=False):
 def test_real_rows_preview_differences_images_and_idempotency(actor, account, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
     content = workbook(photos=True)
-    result = preview(content, account=account, actor=actor, gold_rate=Decimal('15000'))
+    result = preview(content, account=account, actor=actor)
     assert result['gaps'] == [(104, 104)]
     assert result['rows'][1]['status'] == 'Difference'
     assert '2513' in ' '.join(result['rows'][1]['messages'])
     assert not result['has_errors']
     assert all(row['image_bytes'] for row in result['rows'])
-    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content), gold_rate=Decimal('15000'))
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
     assert commit_batch(actor=actor, batch_id=batch.pk) == 6
     assert commit_batch(actor=actor, batch_id=batch.pk) == 0
-    second = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content), gold_rate=Decimal('15000'))
+    second = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
     assert commit_batch(actor=actor, batch_id=second.pk) == 0
     assert Order.objects.count() == 6
     for row in SEED:
         order = Order.objects.get(sales_no=row['sales_no'])
+        assert order.gold_rate == Decimal(row['gold_rate'])
         assert order.total_bill == Decimal(row['total_bill'])
         assert order.net_earnings == Decimal(row['net_earnings'])
         assert order.image and order.thumbnail
@@ -65,7 +66,7 @@ def test_real_rows_preview_differences_images_and_idempotency(actor, account, se
 
 def test_import_one_bad_row_commits_nothing(actor, account):
     content = workbook(bad=True)
-    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content), gold_rate=Decimal('15000'))
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
     count = AuditLog.objects.count()
     with pytest.raises(ValidationError, match='No orders'):
         commit_batch(actor=actor, batch_id=batch.pk)
@@ -75,7 +76,7 @@ def test_import_one_bad_row_commits_nothing(actor, account):
 
 def test_mid_commit_failure_rolls_back_database_audit_and_photos(actor, account, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
-    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook(photos=True)), gold_rate=Decimal('15000'))
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook(photos=True)))
     count = AuditLog.objects.count()
     calls = 0
     def fail_second(**kwargs):
@@ -94,7 +95,7 @@ def test_mid_commit_failure_rolls_back_database_audit_and_photos(actor, account,
 def test_import_pages_and_other_user_batch_denied(actor, account, client):
     client.force_login(actor)
     assert client.get('/imports/').status_code == 200
-    response = client.post('/imports/', {'account': account.pk, 'gold_rate': '15000', 'file': SimpleUploadedFile('rows.xlsx', workbook())})
+    response = client.post('/imports/', {'account': account.pk, 'file': SimpleUploadedFile('rows.xlsx', workbook())})
     assert response.status_code == 302
     assert client.get(response.url).status_code == 200
     other = User.objects.create_user(email='otherimport@example.com', role='Owner')

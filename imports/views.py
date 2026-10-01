@@ -1,4 +1,3 @@
-from decimal import Decimal
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,7 +13,6 @@ from imports.services import create_batch, preview, commit_batch
 class ImportForm(forms.Form):
     account = forms.ModelChoiceField(queryset=EbayAccount.objects.none())
     file = forms.FileField(label='Excel workbook (.xlsx)')
-    gold_rate = forms.DecimalField(max_digits=14, decimal_places=2, min_value=0, initial=Decimal('15000'))
 
     def __init__(self, *args, actor, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,7 +26,7 @@ def upload(request):
         initial={'account': request.session.get('account_id')})
     if request.method == 'POST' and form.is_valid():
         try:
-            batch = create_batch(actor=request.user, account=form.cleaned_data['account'], upload=form.cleaned_data['file'], gold_rate=form.cleaned_data['gold_rate'])
+            batch = create_batch(actor=request.user, account=form.cleaned_data['account'], upload=form.cleaned_data['file'])
         except ValidationError as exc:
             form_error(form, exc)
         else:
