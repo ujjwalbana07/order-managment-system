@@ -4,13 +4,14 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, IntegrityError
+from django.db import DatabaseError, IntegrityError, connection
 from django.shortcuts import get_object_or_404, render, redirect
 from accounts.access import require
 from accounts.models import EbayAccount
 from accounts.views import form_error
 from imports.models import ImportBatch
 from imports.services import create_batch, preview, commit_batch
+from orders.models import Order
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,43 @@ class ImportForm(forms.Form):
     def __init__(self, *args, actor, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['account'].queryset = EbayAccount.objects.for_user(actor).filter(active=True)
+
+
+@login_required
+def diagnostics(request):
+    require(request.user, 'view_audit')
+    constraints = []
+    with connection.cursor() as cursor:
+        if connection.vendor == 'postgresql':
+            cursor.execute("""
+                select conname || ': ' || pg_get_constraintdef(oid)
+                from pg_constraint
+                where conrelid = 'orders_order'::regclass and conname like 'order%account%sales%'
+                order by conname
+            """)
+            constraints = [row[0] for row in cursor.fetchall()]
+        else:
+            constraints = [name for name in connection.introspection.get_constraints(cursor, 'orders_order') if 'sales' in name]
+        cursor.execute("select count(*) from django_migrations where app = 'orders' and name = '0008_remove_order_order_account_sales_unique_and_more'")
+        migration_0008 = cursor.fetchone()[0] > 0
+    accounts = []
+    for account in EbayAccount.objects.for_user(request.user).order_by('code'):
+        rows = Order.all_objects.filter(account=account)
+        accounts.append({'account': account, 'active': rows.filter(is_deleted=False).count(),
+            'deleted': rows.filter(is_deleted=True).count(), 'total': rows.count()})
+    batches = []
+    for batch in ImportBatch.objects.filter(actor=request.user).select_related('account').order_by('-created_at')[:10]:
+        try:
+            result = preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate)
+            statuses = {}
+            for row in result['rows']:
+                statuses[row['status']] = statuses.get(row['status'], 0) + 1
+            summary = ', '.join(f'{key}: {value}' for key, value in sorted(statuses.items())) or 'No rows'
+        except Exception as exc:
+            summary = exc.__class__.__name__
+        batches.append({**batch.__dict__, 'account': batch.account, 'preview_summary': summary})
+    return render(request, 'imports/diagnostics.html', {'vendor': connection.vendor, 'migration_0008': migration_0008,
+        'constraints': constraints, 'accounts': accounts, 'batches': batches})
 
 
 @login_required

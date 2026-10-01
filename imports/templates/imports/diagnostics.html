@@ -1,0 +1,20 @@
+{% extends 'accounts/base.html' %}
+{% block content %}
+<h1>Import diagnostics</h1>
+<p>This page is read-only.</p>
+<section class="panel">
+  <h2>Database</h2>
+  <p>Vendor: {{ vendor }}</p>
+  <p>Orders migration 0008 applied: {{ migration_0008 }}</p>
+  <h3>Order sales constraints</h3>
+  <ul>{% for constraint in constraints %}<li>{{ constraint }}</li>{% empty %}<li>No matching constraints found.</li>{% endfor %}</ul>
+</section>
+<section class="panel">
+  <h2>Orders by account</h2>
+  <table><thead><tr><th>Account</th><th>Active</th><th>Deleted</th><th>Total</th></tr></thead><tbody>{% for row in accounts %}<tr><td>{{ row.account }}</td><td>{{ row.active }}</td><td>{{ row.deleted }}</td><td>{{ row.total }}</td></tr>{% empty %}<tr><td colspan="4">No accounts found.</td></tr>{% endfor %}</tbody></table>
+</section>
+<section class="panel">
+  <h2>Recent import batches</h2>
+  <table><thead><tr><th>Batch</th><th>Account</th><th>File</th><th>Created</th><th>Committed</th><th>Count</th><th>Preview</th></tr></thead><tbody>{% for row in batches %}<tr><td>{{ row.pk }}</td><td>{{ row.account }}</td><td>{{ row.filename }}</td><td>{{ row.created_at }}</td><td>{{ row.committed_at|default:'Not committed' }}</td><td>{{ row.created_count }}</td><td>{{ row.preview_summary }}</td></tr>{% empty %}<tr><td colspan="7">No import batches found.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

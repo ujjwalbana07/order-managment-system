@@ -152,6 +152,18 @@ def test_import_pages_and_other_user_batch_denied(actor, account, client):
     assert client.post(response.url).status_code == 404
 
 
+def test_import_diagnostics_owner_only(actor, account, client):
+    create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    response = client.get('/manage/import-diagnostics/')
+    assert response.status_code == 200
+    assert b'Import diagnostics' in response.content
+    staff = User.objects.create_user(username='staff-import-diagnostics', email='staff-import-diagnostics@example.com', role='Staff')
+    staff.ebay_accounts.add(account)
+    client.force_login(staff)
+    assert client.get('/manage/import-diagnostics/').status_code == 403
+
+
 def test_seed_command_uses_six_supplied_photos(actor, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
     output = StringIO()
