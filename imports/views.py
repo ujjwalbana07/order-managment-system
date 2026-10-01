@@ -32,9 +32,9 @@ def diagnostics(request, batch_id=None):
     batch_debug = ''
     if batch_id:
         try:
-            batch = get_object_or_404(ImportBatch.objects, pk=batch_id, actor=request.user, account__in=EbayAccount.objects.for_user(request.user))
+            batch = get_object_or_404(ImportBatch.objects.select_related('account', 'actor'), pk=batch_id, account__in=EbayAccount.objects.for_user(request.user))
             with transaction.atomic():
-                count = commit_batch(actor=request.user, batch_id=batch_id)
+                count = commit_batch(actor=batch.actor, batch_id=batch_id)
                 batch_debug = f'DRY RUN OK: commit would create {count} orders. Transaction rolled back.'
                 transaction.set_rollback(True)
         except Exception:
@@ -59,7 +59,7 @@ def diagnostics(request, batch_id=None):
         accounts.append({'account': account, 'active': rows.filter(is_deleted=False).count(),
             'deleted': rows.filter(is_deleted=True).count(), 'total': rows.count()})
     batches = []
-    for batch in ImportBatch.objects.filter(actor=request.user).select_related('account').order_by('-created_at')[:10]:
+    for batch in ImportBatch.objects.filter(account__in=EbayAccount.objects.for_user(request.user)).select_related('account').order_by('-created_at')[:10]:
         try:
             result = preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate)
             statuses = {}
