@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.http import FileResponse, JsonResponse, Http404
+from django.http import FileResponse, HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from accounts.access import require, can
@@ -70,7 +70,12 @@ def order_edit(request, pk=None):
             for warning in order_warnings(result):
                 messages.warning(request, warning)
             return redirect('order_create' if request.POST.get('add_another') else 'order_detail', **({} if request.POST.get('add_another') else {'pk': result.pk}))
-    return render(request, 'orders/form.html', {'form': form, 'order': order, 'form_account': account, 'duplicate': duplicate})
+    payment_status = None
+    if order:
+        from payments.services import balances
+        payment_status = balances(order)['status']
+    return render(request, 'orders/form.html', {'form': form, 'order': order, 'form_account': account, 'duplicate': duplicate,
+        'payment_status': payment_status})
 
 
 @login_required
@@ -94,12 +99,19 @@ def costing_preview(request):
 def order_photo(request, pk, thumb=False, second=False):
     order = get_object_or_404(Order.objects.for_user(request.user), pk=pk)
     file = (order.thumbnail2 if thumb else order.image2) if second else (order.thumbnail if thumb else order.image)
+    data = (order.thumbnail2_data if thumb else order.image2_data) if second else (order.thumbnail_data if thumb else order.image_data)
     if not file:
+        if data:
+            response = HttpResponse(bytes(data), content_type='image/jpeg')
+            response['Cache-Control'] = 'private, no-store'
+            return response
         raise Http404('Photo not found.')
     try:
         response = FileResponse(file.open('rb'), content_type='image/jpeg')
     except FileNotFoundError as exc:
-        raise Http404('Photo not found.') from exc
+        if not data:
+            raise Http404('Photo not found.') from exc
+        response = HttpResponse(bytes(data), content_type='image/jpeg')
     response['Cache-Control'] = 'private, no-store'
     return response
 

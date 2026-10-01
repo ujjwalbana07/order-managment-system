@@ -97,14 +97,16 @@ def preview(content, *, account, actor, gold_rate):
     images = {}
     for image in sheet._images:
         if hasattr(image.anchor, '_from'):
-            images[image.anchor._from.row + 1] = image._data()
+            images.setdefault(image.anchor._from.row + 1, []).append(image._data())
     existing = set(Order.all_objects.filter(account=account).values_list('sales_no', flat=True))
     seen = set()
     rows, sales = [], []
     for number, cells in enumerate(sheet.iter_rows(min_row=2, values_only=True), 2):
         if all(value is None for value in cells):
             continue
-        row = {'row': number, 'sales_no': None, 'status': 'New', 'messages': [], 'data': {}, 'image_bytes': images.get(number)}
+        row_images = images.get(number, [])
+        row = {'row': number, 'sales_no': None, 'status': 'New', 'messages': [], 'data': {}, 'image_bytes': row_images[0] if row_images else None,
+            'image2_bytes': row_images[1] if len(row_images) > 1 else None}
         try:
             values = {name: cells[index] for name, index in columns.items()}
             sales_number = decimal_value(values['sales_no'])
@@ -141,6 +143,8 @@ def preview(content, *, account, actor, gold_rate):
                         row['messages'].append(f'{name}: sheet {value}, system {expected}')
             if row['image_bytes']:
                 prepare_image(SimpleUploadedFile('photo', row['image_bytes']))
+            if row['image2_bytes']:
+                prepare_image(SimpleUploadedFile('photo2', row['image2_bytes']))
             row['data'] = data
             row['status'] = 'Difference' if row['messages'] else 'New'
         except (ValidationError, ValueError, TypeError, InvalidOperation) as exc:
@@ -182,7 +186,8 @@ def commit_batch(*, actor, batch_id):
             if row['status'] == 'Duplicate':
                 continue
             image = SimpleUploadedFile('photo', row['image_bytes']) if row['image_bytes'] else None
-            order = save_order(actor=actor, data=row['data'], image=image)
+            image2 = SimpleUploadedFile('photo2', row['image2_bytes']) if row['image2_bytes'] else None
+            order = save_order(actor=actor, data=row['data'], image=image, image2=image2)
             created.append(order)
         batch.committed_at = timezone.now()
         batch.created_count = len(created)

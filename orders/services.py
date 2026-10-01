@@ -46,10 +46,20 @@ def save_order(*, actor, data, order_id=None, version=None, image=None, image2=N
         for upload, image_field, thumb_field in ((image, order.image, order.thumbnail), (image2, order.image2, order.thumbnail2)):
             if upload:
                 photo, thumb = prepare_image(upload)
+                photo_bytes = photo.read()
+                thumb_bytes = thumb.read()
+                photo.seek(0)
+                thumb.seek(0)
                 image_field.save(photo.name, photo, save=False)
                 stored.append((image_field.storage, image_field.name))
                 thumb_field.save(thumb.name, thumb, save=False)
                 stored.append((thumb_field.storage, thumb_field.name))
+                if image_field.field.name == 'image':
+                    order.image_data = photo_bytes
+                    order.thumbnail_data = thumb_bytes
+                else:
+                    order.image2_data = photo_bytes
+                    order.thumbnail2_data = thumb_bytes
         return save_record(order, actor=actor)
     except Exception:
         for storage, name in stored:
