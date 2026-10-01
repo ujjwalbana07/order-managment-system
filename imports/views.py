@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, connection, transaction
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from accounts.access import require
 from accounts.models import EbayAccount
@@ -90,6 +91,18 @@ def upload(request):
 
 @login_required
 def review(request, pk):
+    try:
+        return _review(request, pk)
+    except Http404:
+        raise
+    except Exception:
+        logger.exception('Unhandled import page failure for batch %s', pk)
+        if request.user.is_authenticated and request.user.role == 'Owner':
+            return HttpResponse('<h1>Import failed</h1><p>Send this debug text to developer:</p><pre>' + traceback.format_exc() + '</pre>', status=500)
+        raise
+
+
+def _review(request, pk):
     require(request.user, 'import')
     batch = get_object_or_404(ImportBatch.objects, pk=pk, actor=request.user, account__in=EbayAccount.objects.for_user(request.user))
     if request.method == 'POST':

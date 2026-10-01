@@ -140,6 +140,16 @@ def test_import_preview_unexpected_error_redirects_with_message(actor, account, 
     assert response['Location'] == '/imports/'
 
 
+def test_import_review_unhandled_error_shows_owner_debug(actor, account, client):
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    with patch('imports.views._review', side_effect=RuntimeError('boom')):
+        response = client.get(f'/imports/{batch.pk}/')
+    assert response.status_code == 500
+    assert b'Import failed' in response.content
+    assert b'RuntimeError' in response.content
+
+
 def test_import_pages_and_other_user_batch_denied(actor, account, client):
     client.force_login(actor)
     assert client.get('/imports/').status_code == 200
