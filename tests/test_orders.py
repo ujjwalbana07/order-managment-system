@@ -81,6 +81,28 @@ def test_order_pages_and_form_save(make_order, actor, client):
     assert Order.objects.count() == 1
 
 
+def test_owner_can_bulk_delete_selected_orders(make_order, actor, client):
+    first = save_record(make_order(), actor=actor)
+    second = save_record(make_order(sales_no=102), actor=actor)
+    keep = save_record(make_order(sales_no=103), actor=actor)
+    client.force_login(actor)
+    response = client.get(reverse('order_list'))
+    assert 'Delete selected' in response.content.decode()
+    response = client.post(reverse('order_bulk_delete'), {'order_ids': [str(first.pk), str(second.pk)], 'reason': 'Imported again from Excel'})
+    assert response.status_code == 302
+    assert not Order.objects.filter(pk__in=[first.pk, second.pk]).exists()
+    assert Order.objects.filter(pk=keep.pk).exists()
+    assert Order.all_objects.get(pk=first.pk).delete_reason == 'Imported again from Excel'
+
+
+def test_bulk_delete_requires_reason(make_order, actor, client):
+    order = save_record(make_order(), actor=actor)
+    client.force_login(actor)
+    response = client.post(reverse('order_bulk_delete'), {'order_ids': [str(order.pk)]})
+    assert response.status_code == 302
+    assert Order.objects.filter(pk=order.pk).exists()
+
+
 def test_totals_and_search_cover_filter(make_order, actor, client):
     one = save_record(make_order(), actor=actor)
     save_record(make_order(sales_no=102, buyer_username='another'), actor=actor)

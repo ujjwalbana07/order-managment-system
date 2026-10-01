@@ -74,3 +74,26 @@ if (paymentForm) {
   });
   remaining();
 }
+const bulkDeleteForm = document.querySelector('#bulk-delete-form');
+if (bulkDeleteForm) {
+  const selectAll = bulkDeleteForm.querySelector('#select-all-orders');
+  const boxes = Array.from(bulkDeleteForm.querySelectorAll('.order-select'));
+  const button = bulkDeleteForm.querySelector('#bulk-delete-button');
+  const count = bulkDeleteForm.querySelector('#bulk-selected-count');
+  function refreshBulkDelete() {
+    const selected = boxes.filter(box => box.checked).length;
+    button.disabled = selected === 0;
+    count.textContent = selected ? `${selected} order${selected === 1 ? '' : 's'} selected.` : 'No orders selected.';
+    if (selectAll) {
+      selectAll.checked = selected > 0 && selected === boxes.length;
+      selectAll.indeterminate = selected > 0 && selected < boxes.length;
+    }
+  }
+  if (selectAll) selectAll.addEventListener('change', () => { boxes.forEach(box => { box.checked = selectAll.checked; }); refreshBulkDelete(); });
+  boxes.forEach(box => box.addEventListener('change', refreshBulkDelete));
+  bulkDeleteForm.addEventListener('submit', event => {
+    const selected = boxes.filter(box => box.checked).length;
+    if (!selected || !window.confirm(`Delete ${selected} selected order${selected === 1 ? '' : 's'}?`)) event.preventDefault();
+  });
+  refreshBulkDelete();
+}

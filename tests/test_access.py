@@ -395,6 +395,14 @@ def test_nonowners_cannot_change_settings_or_delete_orders(access_data, make_ord
             save_record(Settings(), actor=user)
 
 
+def test_nonowner_cannot_bulk_delete_orders(access_data, make_order, actor, client):
+    order = save_record(make_order(), actor=actor)
+    client.force_login(access_data[3]['Staff'])
+    response = client.post(reverse('order_bulk_delete'), {'order_ids': [str(order.pk)], 'reason': 'No permission'})
+    assert response.status_code == 403
+    assert Order.objects.filter(pk=order.pk).exists()
+
+
 def test_deleted_order_hidden_even_in_nonowner_history_scope(access_data, make_order, actor):
     order = save_record(make_order(is_deleted=True), actor=actor)
     assert not Order.all_objects.for_user(access_data[3]['Staff']).filter(pk=order.pk).exists()

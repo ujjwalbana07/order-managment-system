@@ -21,10 +21,20 @@
 </details>
 <p>{% if user.role != "Staff" %}<a href="{% url 'export' 'orders' 'xlsx' %}?{{ query }}">Export Excel</a> · <a href="{% url 'export' 'orders' 'pdf' %}?{{ query }}">Export PDF</a>{% endif %}</p>
 <p>{{ page.paginator.count }} orders. Totals include all matching orders.</p>
+{% if can_delete_orders %}
+<form method="post" action="{% url 'order_bulk_delete' %}" id="bulk-delete-form">
+  {% csrf_token %}
+  <div class="bulk-actions">
+    <label>Delete reason<input name="reason" placeholder="Required for selected orders"></label>
+    <button type="submit" class="danger" id="bulk-delete-button" disabled>Delete selected</button>
+    <span class="helptext" id="bulk-selected-count">No orders selected.</span>
+  </div>
+{% endif %}
 <div class="table-wrap order-grid">
   <table>
     <thead>
       <tr>
+        {% if can_delete_orders %}<th><input type="checkbox" id="select-all-orders" aria-label="Select all orders on this page"></th>{% endif %}
         <th>Action</th>
         <th><a href="?{{ sort_query }}&sort=serial_no">SR NO</a> <a aria-label="Sort SR NO descending" href="?{{ sort_query }}&sort=-serial_no">↓</a></th>
         <th><a href="?{{ sort_query }}&sort=account">Account</a> <a aria-label="Sort Account descending" href="?{{ sort_query }}&sort=-account">↓</a></th>
@@ -63,17 +73,19 @@
     <tbody>
       {% for order in page %}
       <tr>
-        <td><a class="button secondary table-action" href="{% url 'order_edit' order.pk %}">Edit</a></td>
+        {% if can_delete_orders %}<td><input type="checkbox" class="order-select" name="order_ids" value="{{ order.pk }}" aria-label="Select order {{ order.sales_no }}"></td>{% endif %}
+        <td class="row-actions"><a class="button secondary table-action" href="{% url 'order_edit' order.pk %}">Edit</a>{% if can_delete_orders %}<a class="button danger table-action" href="{% url 'order_delete' order.pk %}">Delete</a>{% endif %}</td>
         <td><a href="{% url 'order_detail' order.pk %}">{{ order.serial_no }}</a></td>
         <td>{{ order.account }}</td><td>{{ order.sales_no }}</td><td>{{ order.order_date|date:"d-M-Y" }}</td><td>{{ order.ship_by_date|date:"d-M-Y" }}</td><td>{{ order.buyer_username }}</td><td>{{ order.fulfilment_status|default:'Not set' }}</td><td>{{ order.balance.status }}</td><td>{% if order.thumbnail or order.thumbnail_data %}<img width="70" height="70" loading="lazy" alt="{{ order.item_title }} photo 1" src="{% url 'order_thumbnail' order.pk %}">{% else %}<span class="helptext">No photo</span>{% endif %}</td><td>{% if order.thumbnail2 or order.thumbnail2_data %}<img width="70" height="70" loading="lazy" alt="{{ order.item_title }} photo 2" src="{% url 'order_thumbnail2' order.pk %}">{% else %}<span class="helptext">No photo</span>{% endif %}</td><td>{{ order.item_title }}</td><td>{{ order.quantity }}</td><td>{{ order.usd_sold|money }}</td><td>{{ order.inr_sold|money }}</td><td>{{ order.purity|percent }}</td><td>{{ order.gross_wt|weight }}</td><td>{{ order.dia_ct|weight }}</td><td>{{ order.other_wt|weight }}</td><td>{{ order.net_wt|weight }}</td><td>{{ order.pure_995|weight }}</td><td>{{ order.igi_cert_no }}</td><td>{{ order.lab_rate|money }}</td><td>{{ order.labour_amount|money }}</td><td>{{ order.diamond_value|money }}</td><td>{{ order.total_bill|money }}</td><td>{{ order.gold_amount|money }}</td><td>{{ order.tracking_no }}</td><td>{{ order.ship_charges|money }}</td><td>{{ order.platform_fees_inr|money }}</td><td>{{ order.net_earnings|money }}</td><td>{{ order.balance.total_received|money }}</td><td>{{ order.balance.total_outstanding|money }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="33">No orders match these filters.</td></tr>
+      <tr><td colspan="{% if can_delete_orders %}34{% else %}33{% endif %}">No orders match these filters.</td></tr>
       {% endfor %}
     </tbody>
-    <tfoot><tr><td></td><td>Totals</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>{{ totals.gross_wt|weight }}</td><td>{{ totals.dia_ct|weight }}</td><td>{{ totals.other_wt|weight }}</td><td>{{ totals.net_wt|weight }}</td><td>{{ totals.pure_995|weight }}</td><td></td><td></td><td>{{ totals.labour_amount|money }}</td><td>{{ totals.diamond_value|money }}</td><td>{{ totals.total_bill|money }}</td><td>{{ totals.gold_amount|money }}</td><td></td><td></td><td></td><td>{{ totals.net_earnings|money }}</td><td>{{ totals.received|money }}</td><td>{{ totals.outstanding|money }}</td></tr></tfoot>
+    <tfoot><tr>{% if can_delete_orders %}<td></td>{% endif %}<td></td><td>Totals</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>{{ totals.gross_wt|weight }}</td><td>{{ totals.dia_ct|weight }}</td><td>{{ totals.other_wt|weight }}</td><td>{{ totals.net_wt|weight }}</td><td>{{ totals.pure_995|weight }}</td><td></td><td></td><td>{{ totals.labour_amount|money }}</td><td>{{ totals.diamond_value|money }}</td><td>{{ totals.total_bill|money }}</td><td>{{ totals.gold_amount|money }}</td><td></td><td></td><td></td><td>{{ totals.net_earnings|money }}</td><td>{{ totals.received|money }}</td><td>{{ totals.outstanding|money }}</td></tr></tfoot>
   </table>
 </div>
-<div class="order-cards">{% for order in page %}<details class="panel"><summary>{{ order.account.code }} · {{ order.sales_no }} · {{ order.total_bill|money }}</summary><p>{{ order.item_title }}</p><p>{{ order.buyer_username }} · {{ order.order_date|date:'d-M-Y' }}</p><p>Order status: {{ order.fulfilment_status|default:'Not set' }} · Payment status: {{ order.balance.status }}</p><p><a href="{% url 'order_edit' order.pk %}">Edit order</a> · <a href="{% url 'order_detail' order.pk %}">View order {{ order.serial_no }}</a></p></details>{% endfor %}<p>Total bill: {{ totals.total_bill|money }} · Net earnings: {{ totals.net_earnings|money }}</p></div>
+{% if can_delete_orders %}</form>{% endif %}
+<div class="order-cards">{% for order in page %}<details class="panel"><summary>{{ order.account.code }} · {{ order.sales_no }} · {{ order.total_bill|money }}</summary><p>{{ order.item_title }}</p><p>{{ order.buyer_username }} · {{ order.order_date|date:'d-M-Y' }}</p><p>Order status: {{ order.fulfilment_status|default:'Not set' }} · Payment status: {{ order.balance.status }}</p><p><a href="{% url 'order_edit' order.pk %}">Edit order</a> · <a href="{% url 'order_detail' order.pk %}">View order {{ order.serial_no }}</a>{% if can_delete_orders %} · <a class="danger-link" href="{% url 'order_delete' order.pk %}">Delete order</a>{% endif %}</p></details>{% endfor %}<p>Total bill: {{ totals.total_bill|money }} · Net earnings: {{ totals.net_earnings|money }}</p></div>
 <nav aria-label="Pagination">{% if page.has_previous %}<a href="?{{ query }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}<span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?{{ query }}&page={{ page.next_page_number }}">Next</a>{% endif %}</nav>
 {% endblock %}

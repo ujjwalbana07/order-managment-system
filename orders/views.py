@@ -36,7 +36,50 @@ def order_list(request):
     sort_params = params.copy()
     sort_params.pop('sort', None)
     return render(request, 'orders/list.html', {'page': page, 'totals': order_totals(queryset), 'query': params.urlencode(),
-        'sort_query': sort_params.urlencode(), 'statuses': Order._meta.get_field('fulfilment_status').choices})
+        'sort_query': sort_params.urlencode(), 'statuses': Order._meta.get_field('fulfilment_status').choices,
+        'can_delete_orders': can(request.user, 'delete_order')})
+
+
+@login_required
+@require_POST
+def bulk_delete(request):
+    require(request.user, 'delete_order')
+    order_ids = []
+    for raw_id in request.POST.getlist('order_ids'):
+        try:
+            order_ids.append(int(raw_id))
+        except (TypeError, ValueError):
+            continue
+    reason = request.POST.get('reason', '').strip()
+    if not order_ids:
+        messages.error(request, 'Select at least one order to delete.')
+        return redirect('order_list')
+    if not reason:
+        messages.error(request, 'Enter a delete reason before deleting selected orders.')
+        return redirect('order_list')
+
+    orders = list(Order.objects.for_user(request.user).filter(pk__in=order_ids).only('pk', 'version', 'sales_no'))
+    found_ids = {order.pk for order in orders}
+    deleted = 0
+    failures = []
+    for order in orders:
+        try:
+            set_deleted(actor=request.user, order_id=order.pk, version=order.version, deleted=True,
+                reason=reason, confirmation='DELETE')
+        except ValidationError as exc:
+            failures.append(f'{order.sales_no}: {exc.messages[0]}')
+        else:
+            deleted += 1
+    missing = len(set(order_ids) - found_ids)
+    if deleted:
+        messages.success(request, f'{deleted} selected order' + (' was' if deleted == 1 else 's were') + ' deleted. History is retained.')
+    if missing:
+        messages.error(request, f'{missing} selected order' + (' was' if missing == 1 else 's were') + ' no longer available.')
+    for failure in failures[:5]:
+        messages.error(request, failure)
+    if len(failures) > 5:
+        messages.error(request, f'{len(failures) - 5} more selected orders could not be deleted.')
+    return redirect('order_list')
 
 
 @login_required

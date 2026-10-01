@@ -30,6 +30,7 @@ urlpatterns = [
     path('orders/account-defaults/<int:pk>/', orders.account_defaults, name='account_defaults'),
     path('orders/preview/', orders.costing_preview, name='costing_preview'),
     path('orders/deleted/', orders.deleted_orders, name='deleted_orders'),
+    path('orders/bulk-delete/', orders.bulk_delete, name='order_bulk_delete'),
     path('orders/<int:pk>/', orders.order_detail, name='order_detail'),
     path('orders/<int:pk>/edit/', orders.order_edit, name='order_edit'),
     path('orders/<int:pk>/delete/', orders.order_delete, name='order_delete'),
