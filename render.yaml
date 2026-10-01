@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: order-management-system
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        fromService:
+          type: web
+          name: order-management-system
+          property: host
+      - key: RENDER_EXTERNAL_HOSTNAME
+        fromService:
+          type: web
+          name: order-management-system
+          property: host
+      - key: TRUST_HTTPS_PROXY
+        value: "true"
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "true"
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: USE_S3_STORAGE
+        value: "false"
