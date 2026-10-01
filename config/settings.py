@@ -17,16 +17,22 @@ def env_list(name, default=""):
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
+def clean_host(value):
+    return value.removeprefix("https://").removeprefix("http://").split("/")[0]
+
+
 DEBUG = env_bool("DJANGO_DEBUG", default=False)
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY and DEBUG:
     SECRET_KEY = "local-development-only-change-before-deploy"
 if not SECRET_KEY:
     raise RuntimeError("Set DJANGO_SECRET_KEY before deploying.")
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
+ALLOWED_HOSTS = [clean_host(host) for host in env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")]
 if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
-    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
-CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if host != "*"]
+    ALLOWED_HOSTS.append(clean_host(os.environ["RENDER_EXTERNAL_HOSTNAME"]))
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+if not CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if host != "*"]
 INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
     "django.contrib.messages", "django.contrib.staticfiles",
