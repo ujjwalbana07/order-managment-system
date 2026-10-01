@@ -1,10 +1,11 @@
 import logging
+import traceback
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, IntegrityError, connection
+from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.shortcuts import get_object_or_404, render, redirect
 from accounts.access import require
 from accounts.models import EbayAccount
@@ -26,8 +27,18 @@ class ImportForm(forms.Form):
 
 
 @login_required
-def diagnostics(request):
+def diagnostics(request, batch_id=None):
     require(request.user, 'view_audit')
+    batch_debug = ''
+    if batch_id:
+        try:
+            batch = get_object_or_404(ImportBatch.objects, pk=batch_id, actor=request.user, account__in=EbayAccount.objects.for_user(request.user))
+            with transaction.atomic():
+                count = commit_batch(actor=request.user, batch_id=batch_id)
+                batch_debug = f'DRY RUN OK: commit would create {count} orders. Transaction rolled back.'
+                transaction.set_rollback(True)
+        except Exception:
+            batch_debug = traceback.format_exc()
     constraints = []
     with connection.cursor() as cursor:
         if connection.vendor == 'postgresql':
@@ -59,7 +70,7 @@ def diagnostics(request):
             summary = exc.__class__.__name__
         batches.append({**batch.__dict__, 'account': batch.account, 'preview_summary': summary})
     return render(request, 'imports/diagnostics.html', {'vendor': connection.vendor, 'migration_0008': migration_0008,
-        'constraints': constraints, 'accounts': accounts, 'batches': batches})
+        'constraints': constraints, 'accounts': accounts, 'batches': batches, 'batch_debug': batch_debug})
 
 
 @login_required

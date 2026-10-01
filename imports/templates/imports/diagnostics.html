@@ -1,7 +1,7 @@
 {% extends 'accounts/base.html' %}
 {% block content %}
 <h1>Import diagnostics</h1>
-<p>This page is read-only.</p>
+<p>This page is read-only.</p><p>To test a failing import without saving rows, open <code>/manage/import-diagnostics/&lt;batch-id&gt;/</code>.</p>
 <section class="panel">
   <h2>Database</h2>
   <p>Vendor: {{ vendor }}</p>
@@ -17,4 +17,5 @@
   <h2>Recent import batches</h2>
   <table><thead><tr><th>Batch</th><th>Account</th><th>File</th><th>Created</th><th>Committed</th><th>Count</th><th>Preview</th></tr></thead><tbody>{% for row in batches %}<tr><td>{{ row.pk }}</td><td>{{ row.account }}</td><td>{{ row.filename }}</td><td>{{ row.created_at }}</td><td>{{ row.committed_at|default:'Not committed' }}</td><td>{{ row.created_count }}</td><td>{{ row.preview_summary }}</td></tr>{% empty %}<tr><td colspan="7">No import batches found.</td></tr>{% endfor %}</tbody></table>
 </section>
+{% if batch_debug %}<section class="panel"><h2>Batch debug</h2><pre>{{ batch_debug }}</pre></section>{% endif %}
 {% endblock %}

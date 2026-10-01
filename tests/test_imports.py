@@ -158,6 +158,10 @@ def test_import_diagnostics_owner_only(actor, account, client):
     response = client.get('/manage/import-diagnostics/')
     assert response.status_code == 200
     assert b'Import diagnostics' in response.content
+    batch_id = response.context['batches'][0]['id']
+    debug_response = client.get(f'/manage/import-diagnostics/{batch_id}/')
+    assert debug_response.status_code == 200
+    assert b'DRY RUN OK' in debug_response.content
     staff = User.objects.create_user(username='staff-import-diagnostics', email='staff-import-diagnostics@example.com', role='Staff')
     staff.ebay_accounts.add(account)
     client.force_login(staff)

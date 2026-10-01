@@ -16,6 +16,7 @@ urlpatterns = [
     path('manage/audit/', audit.audit_list, name='audit_log'),
     path('imports/', imports.upload, name='import_upload'),
     path('manage/import-diagnostics/', imports.diagnostics, name='import_diagnostics'),
+    path('manage/import-diagnostics/<uuid:batch_id>/', imports.diagnostics, name='import_diagnostics_batch'),
     path('imports/<uuid:pk>/', imports.review, name='import_preview'),
     path('orders/<int:pk>/invoice/', documents.issue, name='issue_invoice'),
     path('invoices/<int:pk>/download/', documents.invoice_download, name='invoice_download'),
