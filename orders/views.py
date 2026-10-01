@@ -109,7 +109,7 @@ def order_edit(request, pk=None):
                 image2=form.cleaned_data.get('image2'))
         except (ValidationError, IntegrityError) as exc:
             form_error(form, exc if isinstance(exc, ValidationError) else ValidationError('This sales number already exists in the selected account.'))
-            duplicate = Order.all_objects.for_user(request.user).filter(account=form.cleaned_data['account'], sales_no=form.cleaned_data['sales_no']).first()
+            duplicate = Order.objects.for_user(request.user).filter(account=form.cleaned_data['account'], sales_no=form.cleaned_data['sales_no']).first()
         else:
             messages.success(request, 'Order saved.')
             for warning in order_warnings(result):

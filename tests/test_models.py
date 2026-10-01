@@ -23,6 +23,10 @@ def test_unique_account_sales(make_order, actor, account):
     assert first.serial_no != second.serial_no
     with pytest.raises(IntegrityError), transaction.atomic():
         Order.all_objects.filter(pk=second.pk).update(account=account)
+    first.is_deleted = True
+    save_record(first, actor=actor)
+    replacement = save_record(make_order(), actor=actor)
+    assert replacement.pk != first.pk
 
 
 @pytest.mark.parametrize('value', ['0', '-1'])

@@ -98,7 +98,7 @@ def preview(content, *, account, actor, gold_rate=None):
     for image in sheet._images:
         if hasattr(image.anchor, '_from'):
             images.setdefault(image.anchor._from.row + 1, []).append(image._data())
-    existing = set(Order.all_objects.filter(account=account).values_list('sales_no', flat=True))
+    existing = set(Order.objects.filter(account=account).values_list('sales_no', flat=True))
     seen = set()
     rows, sales = [], []
     for number, cells in enumerate(sheet.iter_rows(min_row=2, values_only=True), 2):

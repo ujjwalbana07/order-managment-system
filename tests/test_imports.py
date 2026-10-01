@@ -64,6 +64,19 @@ def test_real_rows_preview_differences_images_and_idempotency(actor, account, se
         assert order.image and order.thumbnail
 
 
+def test_import_ignores_soft_deleted_sales_numbers(actor, account):
+    content = workbook()
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
+    assert commit_batch(actor=actor, batch_id=batch.pk) == 6
+    Order.objects.filter(account=account).update(is_deleted=True)
+    result = preview(content, account=account, actor=actor)
+    assert {row['status'] for row in result['rows']} <= {'New', 'Difference'}
+    second = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))
+    assert commit_batch(actor=actor, batch_id=second.pk) == 6
+    assert Order.objects.count() == 6
+    assert Order.all_objects.count() == 12
+
+
 def test_import_one_bad_row_commits_nothing(actor, account):
     content = workbook(bad=True)
     batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', content))

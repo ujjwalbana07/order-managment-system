@@ -81,7 +81,7 @@ class Order(RetainedModel):
         base_manager_name = 'all_objects'
         constraints = [
             models.CheckConstraint(condition=models.Q(sales_no__gte=0), name='order_sales_no_nonnegative'),
-            models.UniqueConstraint(fields=['account', 'sales_no'], name='order_account_sales_unique'),
+            models.UniqueConstraint(fields=['account', 'sales_no'], condition=models.Q(is_deleted=False), name='order_active_account_sales_unique'),
             models.CheckConstraint(condition=models.Q(net_wt__gt=0), name='order_net_wt_positive'),
             models.CheckConstraint(condition=models.Q(gross_wt__gt=0), name='order_gross_wt_positive'),
             models.CheckConstraint(condition=models.Q(purity__gte=Decimal('0.0001'), purity__lte=1), name='order_purity_range'),
