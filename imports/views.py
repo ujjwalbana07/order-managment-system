@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, IntegrityError
+from django.db import DatabaseError, IntegrityError, transaction
 from django.shortcuts import get_object_or_404, render, redirect
 from accounts.access import require
 from accounts.models import EbayAccount
@@ -44,8 +44,9 @@ def review(request, pk):
             count = commit_batch(actor=request.user, batch_id=pk)
         except ValidationError as exc:
             messages.error(request, exc.messages[0])
-        except (DatabaseError, IntegrityError):
-            messages.error(request, 'Import could not be saved because the database is not ready or another active order has the same sales number. Wait for the latest deploy to finish, then try again.')
+        except (DatabaseError, IntegrityError, OSError) as exc:
+            transaction.set_rollback(False)
+            messages.error(request, 'Import could not be saved. Wait for the latest deploy to finish, then try again. If this repeats, check Render logs for: ' + exc.__class__.__name__)
         else:
             messages.success(request, f'Import complete. {count} orders created.')
             return redirect('order_list')
