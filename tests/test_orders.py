@@ -49,15 +49,18 @@ def test_photo_sanitized_private_and_invalid_rejected(make_order, actor, client,
     exif[270] = 'Sensitive metadata'
     photo.save(output, 'JPEG', exif=exif)
     upload = SimpleUploadedFile('anything.exe', output.getvalue(), content_type='application/octet-stream')
-    order = save_order(actor=actor, data=data_for(make_order()), image=upload)
+    upload2 = SimpleUploadedFile('second.png', output.getvalue(), content_type='image/png')
+    order = save_order(actor=actor, data=data_for(make_order()), image=upload, image2=upload2)
     with Image.open(order.image.path) as saved:
         assert max(saved.size) == 1600
         assert not saved.getexif()
     with Image.open(order.thumbnail.path) as saved:
         assert max(saved.size) <= 240
+    assert order.image2 and order.thumbnail2
     assert client.get(reverse('order_photo', args=[order.pk])).status_code == 302
     client.force_login(actor)
     assert client.get(reverse('order_photo', args=[order.pk])).status_code == 200
+    assert client.get(reverse('order_photo2', args=[order.pk])).status_code == 200
     with pytest.raises(ValidationError, match='image'):
         save_order(actor=actor, data=data_for(make_order(sales_no=102)), image=SimpleUploadedFile('fake.jpg', b'not an image'))
     assert Order.objects.count() == 1

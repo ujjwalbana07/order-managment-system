@@ -38,7 +38,7 @@ def filtered_orders(user, params, selected=None):
                 matching.append(order.pk)
         queryset = queryset.filter(pk__in=matching)
     sort = params.get('sort', '-order_date')
-    valid = {field.name for field in Order._meta.fields} - {'image', 'thumbnail', 'delete_reason'}
+    valid = {field.name for field in Order._meta.fields} - {'image', 'thumbnail', 'image2', 'thumbnail2', 'delete_reason'}
     if sort.lstrip('-') in valid:
         queryset = queryset.order_by(sort, 'serial_no')
     if sort.lstrip('-') in ('received', 'outstanding', 'payment_status'):

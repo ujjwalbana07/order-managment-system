@@ -19,7 +19,7 @@ INPUT_FIELDS = ('account', 'sales_no', 'challan_no', 'mfg_order_no', 'order_date
 
 @retry_locked
 @transaction.atomic
-def save_order(*, actor, data, order_id=None, version=None, image=None):
+def save_order(*, actor, data, order_id=None, version=None, image=None, image2=None):
     require(actor, 'edit_order' if order_id else 'create_order')
     if set(data) - set(INPUT_FIELDS):
         raise ValidationError('Some submitted fields cannot be changed here.')
@@ -43,12 +43,13 @@ def save_order(*, actor, data, order_id=None, version=None, image=None):
     order.full_clean()
     stored = []
     try:
-        if image:
-            photo, thumb = prepare_image(image)
-            order.image.save(photo.name, photo, save=False)
-            stored.append((order.image.storage, order.image.name))
-            order.thumbnail.save(thumb.name, thumb, save=False)
-            stored.append((order.thumbnail.storage, order.thumbnail.name))
+        for upload, image_field, thumb_field in ((image, order.image, order.thumbnail), (image2, order.image2, order.thumbnail2)):
+            if upload:
+                photo, thumb = prepare_image(upload)
+                image_field.save(photo.name, photo, save=False)
+                stored.append((image_field.storage, image_field.name))
+                thumb_field.save(thumb.name, thumb, save=False)
+                stored.append((thumb_field.storage, thumb_field.name))
         return save_record(order, actor=actor)
     except Exception:
         for storage, name in stored:

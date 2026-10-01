@@ -34,6 +34,8 @@ class Order(RetainedModel):
     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     image = models.ImageField(upload_to='orders/', blank=True)
     thumbnail = models.ImageField(upload_to='orders/thumbnails/', blank=True, editable=False)
+    image2 = models.ImageField(upload_to='orders/', blank=True)
+    thumbnail2 = models.ImageField(upload_to='orders/thumbnails/', blank=True, editable=False)
     igi_cert_no = models.CharField(max_length=100, blank=True)
     tracking_no = models.CharField(max_length=255, blank=True)
     fulfilment_status = models.CharField(max_length=20, blank=True, default='', choices=[('', '---------'), ('Delivered', 'Delivered'), ('Returned', 'Returned'), ('Cancelled', 'Cancelled')])

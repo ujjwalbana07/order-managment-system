@@ -60,7 +60,8 @@ def order_edit(request, pk=None):
     if request.method == 'POST' and form.is_valid():
         try:
             result = save_order(actor=request.user, data={name: form.cleaned_data[name] for name in INPUT_FIELDS},
-                order_id=pk, version=form.cleaned_data['version'], image=form.cleaned_data.get('image'))
+                order_id=pk, version=form.cleaned_data['version'], image=form.cleaned_data.get('image'),
+                image2=form.cleaned_data.get('image2'))
         except (ValidationError, IntegrityError) as exc:
             form_error(form, exc if isinstance(exc, ValidationError) else ValidationError('This sales number already exists in the selected account.'))
             duplicate = Order.all_objects.for_user(request.user).filter(account=form.cleaned_data['account'], sales_no=form.cleaned_data['sales_no']).first()
@@ -90,12 +91,15 @@ def costing_preview(request):
 
 
 @login_required
-def order_photo(request, pk, thumb=False):
+def order_photo(request, pk, thumb=False, second=False):
     order = get_object_or_404(Order.objects.for_user(request.user), pk=pk)
-    file = order.thumbnail if thumb else order.image
+    file = (order.thumbnail2 if thumb else order.image2) if second else (order.thumbnail if thumb else order.image)
     if not file:
         raise Http404('Photo not found.')
-    response = FileResponse(file.open('rb'), content_type='image/jpeg')
+    try:
+        response = FileResponse(file.open('rb'), content_type='image/jpeg')
+    except FileNotFoundError as exc:
+        raise Http404('Photo not found.') from exc
     response['Cache-Control'] = 'private, no-store'
     return response
 

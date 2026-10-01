@@ -191,7 +191,7 @@ def commit_batch(*, actor, batch_id):
             account=account, after={'orders': [order.pk for order in created], 'created_count': len(created)})
     except Exception:
         for order in created:
-            for file in (order.image, order.thumbnail):
+            for file in (order.image, order.thumbnail, order.image2, order.thumbnail2):
                 if file:
                     file.storage.delete(file.name)
         raise

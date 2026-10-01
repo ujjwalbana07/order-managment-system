@@ -25,7 +25,8 @@ class OrderForm(forms.Form):
             help_text='Enter a percentage, for example 59.5.')
         self.fields['purity_confirm'] = forms.BooleanField(required=False, label='I confirm purity is below 1%')
         self.fields['version'] = forms.IntegerField(widget=forms.HiddenInput, initial=instance.version if instance else 1)
-        self.fields['image'] = forms.FileField(required=False, label='Photo', help_text='JPEG, PNG or WebP. Maximum 5 MB.')
+        self.fields['image'] = forms.FileField(required=False, label='Photo 1', help_text='JPEG, PNG or WebP. Maximum 5 MB.')
+        self.fields['image2'] = forms.FileField(required=False, label='Photo 2', help_text='Optional second image. JPEG, PNG or WebP. Maximum 5 MB.')
         self.initial.update({'account': account, 'order_date': timezone.localdate(), 'quantity': 1,
             'fx_rate': default_fx_rate(), 'gold_rate': default_gold_rate(), 'lab_rate': Decimal('0'),
             'ship_charges': Decimal('0'), 'platform_fees_inr': Decimal('0'), 'other_wt': Decimal('0'), 'dia_ct': Decimal('0'), 'fulfilment_status': ''})

@@ -45,7 +45,7 @@ class Command(BaseCommand):
                 created.append(save_order(actor=actor, data=data, image=image))
         except Exception:
             for order in created:
-                for image in (order.image, order.thumbnail):
+                for image in (order.image, order.thumbnail, order.image2, order.thumbnail2):
                     if image:
                         image.storage.delete(image.name)
             raise
