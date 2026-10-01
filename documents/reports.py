@@ -39,7 +39,7 @@ def account_report(accounts, orders):
             continue
         row = result[order.account_id]
         balance = balances(order)
-        row['open_orders'] += order.fulfilment_status not in ('Shipped', 'Cancelled')
+        row['open_orders'] += order.fulfilment_status not in ('Delivered', 'Returned', 'Cancelled')
         for name in ('total_bill', 'total_received', 'total_outstanding'):
             row[name] += balance[name]
         if (order.order_date.year, order.order_date.month) == (today.year, today.month):

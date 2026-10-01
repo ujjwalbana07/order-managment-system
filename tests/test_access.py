@@ -217,11 +217,11 @@ def test_owner_user_management_and_audit(client, actor, account):
 
 def test_owner_account_management(client, actor):
     client.force_login(actor)
-    data = dict(code='NEW', display_name='New shop', ebay_username='newshop', active='on',
-        billing_name='New', billing_address='Address', phone='123', email='shop@example.com')
+    data = dict(code='NEW', display_name='New shop', active='on')
     count = AuditLog.objects.count()
     assert client.post(reverse('account_create'), data).status_code == 302
     account = EbayAccount.objects.get(code='NEW')
+    assert account.ebay_username == 'NEW' and account.billing_name == 'New shop'
     data.pop('active')
     assert client.post(reverse('account_edit', args=[account.pk]), data).status_code == 302
     account.refresh_from_db()
@@ -308,7 +308,7 @@ def test_owner_sees_unassigned_accounts(client, actor, access_data):
 def test_dashboard_counts_exclude_closed_deleted_and_other_accounts(client, access_data, make_order, actor):
     a, b, c, users = access_data
     save_record(make_order(account=a), actor=actor)
-    save_record(make_order(account=a, sales_no=102, fulfilment_status='Shipped', tracking_no='TRACK'), actor=actor)
+    save_record(make_order(account=a, sales_no=102, fulfilment_status='Delivered', tracking_no='TRACK'), actor=actor)
     save_record(make_order(account=a, sales_no=103, fulfilment_status='Cancelled'), actor=actor)
     save_record(make_order(account=a, sales_no=104, is_deleted=True), actor=actor)
     save_record(make_order(account=c), actor=actor)

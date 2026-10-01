@@ -28,7 +28,7 @@ class OrderForm(forms.Form):
         self.fields['image'] = forms.FileField(required=False, label='Photo', help_text='JPEG, PNG or WebP. Maximum 5 MB.')
         self.initial.update({'account': account, 'order_date': timezone.localdate(), 'quantity': 1,
             'fx_rate': default_fx_rate(), 'gold_rate': default_gold_rate(), 'lab_rate': Decimal('0'),
-            'ship_charges': Decimal('0'), 'platform_fees_inr': Decimal('0'), 'other_wt': Decimal('0'), 'dia_ct': Decimal('0'), 'fulfilment_status': 'New'})
+            'ship_charges': Decimal('0'), 'platform_fees_inr': Decimal('0'), 'other_wt': Decimal('0'), 'dia_ct': Decimal('0'), 'fulfilment_status': ''})
         if account and account.default_gold_rate is not None:
             self.initial['gold_rate'] = account.default_gold_rate
         if instance:

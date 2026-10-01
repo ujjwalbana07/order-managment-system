@@ -51,7 +51,7 @@ def test_derived_money_database_constraint(make_order, actor, field):
 
 
 @pytest.mark.parametrize('changes', [dict(purity=Decimal('0')), dict(purity=Decimal('1.0001')),
-    dict(quantity=0), dict(ship_by_date=date(2025, 12, 31)), dict(fulfilment_status='Shipped', tracking_no='  '),
+    dict(quantity=0), dict(ship_by_date=date(2025, 12, 31)), dict(fulfilment_status='Shipped'),
     dict(dia_ct=Decimal('-1')), dict(other_wt=Decimal('-1')), dict(inr_sold=Decimal('NaN')),
     dict(diamond_value=Decimal('1.001'))])
 def test_order_validation(make_order, actor, changes):

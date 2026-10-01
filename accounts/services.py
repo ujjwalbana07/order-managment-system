@@ -71,6 +71,18 @@ def save_account(*, actor, data, account_id=None):
         raise ValidationError('Some submitted fields cannot be changed here.')
     for name, value in data.items():
         setattr(account, name, value.strip() if isinstance(value, str) else value)
+    account.code = account.code.strip()
+    account.display_name = account.display_name.strip()
+    if not account.ebay_username:
+        account.ebay_username = account.code
+    if not account.billing_name:
+        account.billing_name = account.display_name
+    if not account.billing_address:
+        account.billing_address = account.display_name
+    if not account.phone:
+        account.phone = 'Not entered'
+    if not account.email:
+        account.email = 'not-entered@example.com'
     return save_record(account, actor=actor)
 
 

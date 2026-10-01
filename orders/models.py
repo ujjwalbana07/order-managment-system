@@ -36,7 +36,7 @@ class Order(RetainedModel):
     thumbnail = models.ImageField(upload_to='orders/thumbnails/', blank=True, editable=False)
     igi_cert_no = models.CharField(max_length=100, blank=True)
     tracking_no = models.CharField(max_length=255, blank=True)
-    fulfilment_status = models.CharField(max_length=20, default='New', choices=[(x, x) for x in ('New', 'In production', 'Ready', 'Shipped', 'Cancelled')])
+    fulfilment_status = models.CharField(max_length=20, blank=True, default='', choices=[('', '---------'), ('Delivered', 'Delivered'), ('Returned', 'Returned'), ('Cancelled', 'Cancelled')])
     usd_sold = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
     fx_rate = models.DecimalField(max_digits=10, decimal_places=4, default=default_fx_rate, validators=[MinValueValidator(Decimal('0'))])
     inr_sold = money()
@@ -79,7 +79,6 @@ class Order(RetainedModel):
             models.CheckConstraint(condition=models.Q(quantity__gte=1), name='order_quantity_positive'),
             models.CheckConstraint(condition=models.Q(version__gte=1), name='order_version_positive'),
             models.CheckConstraint(condition=models.Q(ship_by_date__isnull=True) | models.Q(ship_by_date__gte=models.F('order_date')), name='order_ship_date_valid'),
-            models.CheckConstraint(condition=~models.Q(fulfilment_status='Shipped') | ~models.Q(tracking_no=''), name='order_shipped_tracking'),
             *nonnegative_constraints('order', ['usd_sold', 'fx_rate', 'inr_sold', 'ship_charges', 'platform_fees_inr', 'gold_rate', 'lab_rate', 'diamond_value', 'gold_amount', 'labour_amount', 'total_bill', 'dia_ct', 'other_wt']),
         ]
 

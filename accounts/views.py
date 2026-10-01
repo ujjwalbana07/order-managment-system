@@ -47,7 +47,7 @@ def dashboard(request):
     if context['current_account']:
         accounts = accounts.filter(pk=context['current_account'].pk)
     accounts = accounts.annotate(open_orders=Count('orders', filter=Q(orders__is_deleted=False) &
-        ~Q(orders__fulfilment_status__in=['Shipped', 'Cancelled'])))
+        ~Q(orders__fulfilment_status__in=['Delivered', 'Returned', 'Cancelled'])))
     from documents.reports import account_report
     from orders.models import Order
     financials = account_report(accounts, Order.objects.for_user(request.user).filter(account__in=accounts))

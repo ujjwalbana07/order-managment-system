@@ -12,9 +12,8 @@ class EmailLoginForm(AuthenticationForm):
 class AccountForm(forms.ModelForm):
     class Meta:
         model = EbayAccount
-        fields = ['code', 'display_name', 'ebay_username', 'active', 'billing_name', 'billing_address',
-                  'phone', 'email', 'tax_id', 'default_gold_rate', 'notes']
-        widgets = {'billing_address': forms.Textarea(attrs={'rows': 3}), 'notes': forms.Textarea(attrs={'rows': 3})}
+        fields = ['code', 'display_name', 'active']
+        labels = {'code': 'Account ID', 'display_name': 'Account name'}
 
 
 class UserForm(forms.ModelForm):
