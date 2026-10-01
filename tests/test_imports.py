@@ -131,11 +131,21 @@ def test_import_commit_unexpected_error_shows_message(actor, account, client):
     assert b'Import could not be saved' in response.content
 
 
-def test_import_preview_unexpected_error_redirects_with_message(actor, account, client):
+def test_import_review_uses_cached_preview(actor, account, client):
     batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
     client.force_login(actor)
     with patch('imports.views.preview', side_effect=RuntimeError('boom')):
         response = client.get(f'/imports/{batch.pk}/')
+    assert response.status_code == 200
+    assert b'Review import' in response.content
+
+
+def test_older_import_batch_without_cache_redirects_to_upload(actor, account, client):
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    batch.preview_cache = {}
+    batch.save()
+    client.force_login(actor)
+    response = client.get(f'/imports/{batch.pk}/')
     assert response.status_code == 302
     assert response['Location'] == '/imports/'
 

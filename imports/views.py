@@ -12,7 +12,7 @@ from accounts.access import require
 from accounts.models import EbayAccount
 from accounts.views import form_error
 from imports.models import ImportBatch
-from imports.services import create_batch, preview, commit_batch
+from imports.services import create_batch, preview, commit_batch, serializable_preview
 from orders.models import Order
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def diagnostics(request, batch_id=None):
     batches = []
     for batch in ImportBatch.objects.filter(account__in=EbayAccount.objects.for_user(request.user)).select_related('account').order_by('-created_at')[:10]:
         try:
-            result = preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate)
+            result = batch.preview_cache or serializable_preview(preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate))
             statuses = {}
             for row in result['rows']:
                 statuses[row['status']] = statuses.get(row['status'], 0) + 1
@@ -119,13 +119,8 @@ def _review(request, pk):
         else:
             messages.success(request, f'Import complete. {count} orders created.')
             return redirect('order_list')
-    try:
-        result = preview(bytes(batch.source), account=batch.account, actor=request.user, gold_rate=batch.gold_rate)
-    except ValidationError as exc:
-        messages.error(request, exc.messages[0])
-        return redirect('import_upload')
-    except Exception as exc:
-        logger.exception('Import preview failed for batch %s', pk)
-        messages.error(request, 'Import preview failed. Render logs will show: ' + exc.__class__.__name__)
+    result = batch.preview_cache
+    if not result:
+        messages.error(request, 'This older import batch needs to be uploaded again. Upload the Excel once more and import from the new preview.')
         return redirect('import_upload')
     return render(request, 'imports/preview.html', {'batch': batch, **result})

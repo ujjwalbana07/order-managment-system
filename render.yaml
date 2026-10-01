@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: ./build.sh
-    startCommand: gunicorn config.wsgi:application
+    startCommand: gunicorn config.wsgi:application --timeout 120 --graceful-timeout 30
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION

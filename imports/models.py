@@ -10,6 +10,7 @@ class ImportBatch(RetainedModel):
     account = models.ForeignKey('accounts.EbayAccount', on_delete=models.PROTECT)
     filename = models.CharField(max_length=255)
     source = models.BinaryField(editable=False)
+    preview_cache = models.JSONField(default=dict, blank=True)
     gold_rate = money()
     created_at = models.DateTimeField(auto_now_add=True)
     committed_at = models.DateTimeField(null=True, blank=True)

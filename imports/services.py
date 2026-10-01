@@ -76,6 +76,14 @@ def open_workbook(content):
         raise ValidationError('Choose a valid .xlsx workbook.') from exc
 
 
+def serializable_preview(result):
+    return {
+        'rows': [{'row': row['row'], 'sales_no': row['sales_no'], 'status': row['status'], 'messages': row['messages']} for row in result['rows']],
+        'gaps': [[start, end] for start, end in result['gaps']],
+        'has_errors': result['has_errors'],
+    }
+
+
 def preview(content, *, account, actor, gold_rate=None):
     require(actor, 'import')
     if not EbayAccount.objects.for_user(actor).filter(pk=account.pk, active=True).exists():
@@ -161,8 +169,9 @@ def preview(content, *, account, actor, gold_rate=None):
 @transaction.atomic
 def create_batch(*, actor, account, upload, gold_rate=None):
     content = upload.read(10 * 1024 * 1024 + 1)
-    preview(content, account=account, actor=actor, gold_rate=gold_rate)
-    batch = ImportBatch(actor=actor, account=account, filename=Path(upload.name).name, source=content, gold_rate=gold_rate or default_gold_rate())
+    result = preview(content, account=account, actor=actor, gold_rate=gold_rate)
+    batch = ImportBatch(actor=actor, account=account, filename=Path(upload.name).name, source=content,
+        preview_cache=serializable_preview(result), gold_rate=gold_rate or default_gold_rate())
     batch.save()
     AuditLog.objects.create(actor=actor, action='import_preview', object_type='imports.ImportBatch', object_id=str(batch.pk),
         account=account, after={'filename': batch.filename})
