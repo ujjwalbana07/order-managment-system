@@ -81,6 +81,13 @@ def test_order_pages_and_form_save(make_order, actor, client):
     assert Order.objects.count() == 1
 
 
+def test_bulk_delete_get_redirects_to_order_list(actor, client):
+    client.force_login(actor)
+    response = client.get(reverse('order_bulk_delete'))
+    assert response.status_code == 302
+    assert response['Location'] == reverse('order_list')
+
+
 def test_owner_can_bulk_delete_selected_orders(make_order, actor, client):
     first = save_record(make_order(), actor=actor)
     second = save_record(make_order(sales_no=102), actor=actor)

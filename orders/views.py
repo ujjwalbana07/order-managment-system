@@ -41,9 +41,11 @@ def order_list(request):
 
 
 @login_required
-@require_POST
 def bulk_delete(request):
     require(request.user, 'delete_order')
+    if request.method != 'POST':
+        messages.error(request, 'Use the checkboxes on the Orders page, then click Delete selected.')
+        return redirect('order_list')
     order_ids = []
     for raw_id in request.POST.getlist('order_ids'):
         try:
