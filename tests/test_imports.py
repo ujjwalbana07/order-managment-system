@@ -112,6 +112,16 @@ def test_mid_commit_failure_rolls_back_database_audit_and_photos(actor, account,
     assert not list(tmp_path.rglob('*.jpg'))
 
 
+def test_import_commit_database_error_shows_message(actor, account, client):
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    from django.db import IntegrityError
+    with patch('imports.views.commit_batch', side_effect=IntegrityError('duplicate')):
+        response = client.post(f'/imports/{batch.pk}/')
+    assert response.status_code == 200
+    assert b'Import could not be saved' in response.content
+
+
 def test_import_pages_and_other_user_batch_denied(actor, account, client):
     client.force_login(actor)
     assert client.get('/imports/').status_code == 200
