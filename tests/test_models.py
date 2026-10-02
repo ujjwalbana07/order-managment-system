@@ -29,6 +29,23 @@ def test_unique_account_sales(make_order, actor, account):
     assert replacement.pk != first.pk
 
 
+def test_order_validation_avoids_per_check_database_queries(make_order):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    order = make_order()
+    with CaptureQueriesContext(connection) as queries:
+        order.full_clean()
+    # Foreign-key and uniqueness validation (including rate defaults) need
+    # at most nine queries. The twenty CHECKs must not each issue another.
+    assert len(queries) <= 9
+
+
+def test_order_version_must_be_positive(make_order):
+    with pytest.raises(ValidationError, match='Version must be at least 1'):
+        make_order(version=0).full_clean()
+
+
 @pytest.mark.parametrize('value', ['0', '-1'])
 def test_net_weight_model_and_database(make_order, actor, value):
     with pytest.raises(ValidationError):

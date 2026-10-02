@@ -104,7 +104,9 @@ def review(request, pk):
 
 def _review(request, pk):
     require(request.user, 'import')
-    batch = get_object_or_404(ImportBatch.objects, pk=pk, actor=request.user, account__in=EbayAccount.objects.for_user(request.user))
+    # The cached review does not need the workbook, which can contain large photos.
+    batch = get_object_or_404(ImportBatch.objects.defer('source').select_related('account'),
+        pk=pk, actor=request.user, account__in=EbayAccount.objects.for_user(request.user))
     if request.method == 'POST':
         try:
             count = commit_batch(actor=request.user, batch_id=pk)

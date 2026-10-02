@@ -62,6 +62,7 @@ def test_real_rows_preview_differences_images_and_idempotency(actor, account, se
         assert order.total_bill == Decimal(row['total_bill'])
         assert order.net_earnings == Decimal(row['net_earnings'])
         assert order.image and order.thumbnail
+        assert order.image_data and order.thumbnail_data
 
 
 def test_blank_other_weight_imports_as_zero(actor, account):
@@ -138,6 +139,21 @@ def test_import_review_uses_cached_preview(actor, account, client):
         response = client.get(f'/imports/{batch.pk}/')
     assert response.status_code == 200
     assert b'Review import' in response.content
+
+
+def test_import_review_does_not_load_workbook(actor, account, client):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    batch = create_batch(actor=actor, account=account, upload=SimpleUploadedFile('rows.xlsx', workbook()))
+    client.force_login(actor)
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(f'/imports/{batch.pk}/')
+    assert response.status_code == 200
+    assert 'source' in response.context['batch'].get_deferred_fields()
+    batch_queries = [query['sql'] for query in queries if '"imports_importbatch"' in query['sql']]
+    assert len(batch_queries) == 1
+    assert '"imports_importbatch"."source"' not in batch_queries[0]
 
 
 def test_older_import_batch_without_cache_redirects_to_upload(actor, account, client):

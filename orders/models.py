@@ -3,7 +3,7 @@ from accounts.access import AccountScopeMixin
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
+from django.db import models, router
 from core.costing import calculate_costing
 from core.models import default_fx_rate, default_gold_rate
 from core.model_utils import RetainedModel, RetainedQuerySet, money, nonnegative_constraints
@@ -99,6 +99,31 @@ class Order(RetainedModel):
             raise ValidationError(str(exc)) from exc
         for name, value in result.items():
             setattr(self, 'pure_995' if name == 'pure_995_6dp' else name, value)
+
+    def clean(self):
+        super().clean()
+        if self.ship_by_date and self.order_date and self.ship_by_date < self.order_date:
+            raise ValidationError({'ship_by_date': 'Ship by date cannot be before the order date.'})
+        if self.version is not None and self.version < 1:
+            raise ValidationError({'version': 'Version must be at least 1.'})
+
+    def validate_constraints(self, exclude=None):
+        # Field validators, clean(), and recalculate() enforce every Order CHECK
+        # locally. Django otherwise runs a separate SELECT (and PostgreSQL
+        # savepoint) per CHECK, several times per imported row. Keep uniqueness
+        # validation here and retain all database constraints as the final guard.
+        errors = {}
+        using = router.db_for_write(type(self), instance=self)
+        for model_class, constraints in self.get_constraints():
+            for constraint in constraints:
+                if isinstance(constraint, models.CheckConstraint):
+                    continue
+                try:
+                    constraint.validate(model_class, self, exclude=exclude, using=using)
+                except ValidationError as exc:
+                    errors = exc.update_error_dict(errors)
+        if errors:
+            raise ValidationError(errors)
 
     def full_clean(self, *args, **kwargs):
         for field in self._meta.fields:

@@ -199,6 +199,10 @@ def commit_batch(*, actor, batch_id):
             image = SimpleUploadedFile('photo', row['image_bytes']) if row['image_bytes'] else None
             image2 = SimpleUploadedFile('photo2', row['image2_bytes']) if row['image2_bytes'] else None
             order = save_order(actor=actor, data=row['data'], image=image, image2=image2)
+            # Retain only file paths for rollback cleanup, not every saved photo.
+            for field in ('image_data', 'thumbnail_data', 'image2_data', 'thumbnail2_data'):
+                setattr(order, field, None)
+            row['image_bytes'] = row['image2_bytes'] = None
             created.append(order)
         batch.committed_at = timezone.now()
         batch.created_count = len(created)
